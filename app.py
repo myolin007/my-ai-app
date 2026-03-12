@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import tempfile
+import time
 from google import genai
 from google.genai import types
 
@@ -131,6 +132,15 @@ def upload_to_gemini(file_obj, mime_type):
     
     uploaded_file_info = client.files.upload(file=tmp_path, config={'mime_type': mime_type})
     os.unlink(tmp_path)
+    
+    # Wait for the file to be active
+    while getattr(uploaded_file_info.state, "name", uploaded_file_info.state) == "PROCESSING":
+        time.sleep(2)
+        uploaded_file_info = client.files.get(name=uploaded_file_info.name)
+        
+    if getattr(uploaded_file_info.state, "name", uploaded_file_info.state) == "FAILED":
+        raise Exception("File processing failed on Gemini servers.")
+        
     return uploaded_file_info
 
 with col2:
